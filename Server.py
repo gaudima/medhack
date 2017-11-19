@@ -23,6 +23,10 @@ class Doctor(Person):
         Doctor.all_doctors += [self]
         Doctor.number += 1
 
+    def say(self):
+        return 'Большое спасибо за обращение в нашу систему. По вашей проблеме вам поможет' + self.category + \
+               ', доктор' + self.name
+
     @staticmethod
     def detect(symptoms):
         best_doctor = symptoms[0]
