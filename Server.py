@@ -25,14 +25,19 @@ class Server:
 
         @staticmethod
         def detect(symptoms):
-            max_success = 0
-            result = None
-            for doctor in Server.Doctor.all_doctors:
-                curr_success = sum(symp in doctor.keyWords for symp in symptoms)
-                if curr_success > max_success:
-                    max_success = curr_success
-                    result = doctor
-            return result
+            best_doctor = -1
+            index = -1
+            for i in range(len(symptoms)):
+                if symptoms[i] > best_doctor:
+                    best_doctor = symptoms[i]
+                    index = i
+            if index == -1:
+                return None
+            return Server.Doctor.all_doctors[index]
+
+        def say(self):
+            return 'Большое спасибо за обращение в нашу систему. По вашей проблеме вам поможет ' + self.category + \
+                   ', доктор ' + self.name
 
         def get_questions(self):
             return self.questions
@@ -43,8 +48,8 @@ class Server:
             self.history = []
 
         def create_history(self, req, doctor, questions, answers):
-            temp = [Server.History(doctor, req, Server.Dialog(questions, answers))]
-            self.history += temp
+            temp = Server.History(doctor, req, Server.Dialog(questions, answers))
+            self.history.append(temp)
             return temp
 
         def getHistory(self):
@@ -64,8 +69,6 @@ class Server:
             self.questions = questions
             self.answers = answers
 
-    diseasesToQuest = {'angina': ['e', 'e'], 'gripp': [], 'prostuda': []}
-
     c_q = ['У вас повышенное давление?', 'Случаются ли у вас боли в груди?',
            'Принимали ли вы какие-нибудь препараты для купирования боли?', 'Какую боль вы ощущаете?',
            'У вас есть хронические болезни сердца?']
@@ -73,14 +76,17 @@ class Server:
            'Была ли за последнее время рвота?', 'Была ли за последнее время изжога?']
     e_q = ['Есть ли у Вас сухость во рту?', 'Испытываете ли жажду воды?', 'Замечаете ли Вы снижение памяти?',
            'Успытываете ли Вы повышенную потливость', 'Успытываете ли Вы дрожь в руках?']
-    l_q = ['Хорошо ли вы слышите?', 'Больно ли Ва'
-                                    'м глотать?', 'Есть ли у Вас насморк?']
+    l_q = ['Хорошо ли вы слышите?', 'Больно ли Вам глотать?', 'Есть ли у Вас насморк?']
 
-    c_k = ['сердцебиение', 'кардиолог', 'сердце', "давление", "повышенное", "пониженное", "высокое", "низкое"]
+    c_k = ['сердцебиени', 'кардиолог', 'сердце', 'сердечн', 'недостаточност', "давлени", "повышенн", "пониженн",
+           "высок",
+           "низк"]
     g_k = ['живот', 'понос', "диабет", "эндокринолог",
-           "щитовидная", "железа", "тошнит", "сахарный", "ожирение"]
-    e_k = ['отек', 'думать', 'сон', 'усталость', 'диабет', 'дрожь', 'сухость', 'кожа']
-    l_k = ['кашель', 'мокрота', 'кровохарканье', 'уши', 'ухо', 'горло', 'нос', 'заложен', 'одышка', 'удушье']
+           "щитовидная", "железа", "тошнит", "сахарный", "ожирение", 'жир']
+    e_k = ['отек', 'сон|cна', 'устал', 'диабет', 'дрож', 'сухость|сух', 'кож']
+    l_k = ['кашель|кашл', 'мокрот', 'кровохаркань', 'харка' 'уши|ух', 'горл', 'нос', 'сопл' 'заложен', 'одышк', 'удушь']
+
+    common_questions = ['Как долго вы болеете?']
 
     cardiolog = Doctor("I.V. Smirnov", 45, c_k, 'Кардиолог', c_q)
     gastroenterolog = Doctor("А. Чехов", 42, g_k, 'Гастроэнтеролог', g_q)
@@ -93,9 +99,6 @@ class Server:
                 'history': [{'doctor': '', 'request': '', 'dialogs': [{'question': '', 'answer': ''}]}]
                 }]
 
-    common_questions = ['Когда вы заболели?', 'Где вы заболели?', 'С каких ощущений, жалоб началось заболевание',
-                        'Факторы, способствующие началу заболевания']
-
     @staticmethod
     def find_keywords(input_array, keywords_array):
         # разбиваем строку на отдельные слова
@@ -107,18 +110,13 @@ class Server:
             # смотрим совпадение с нашими ключевыми словами
             for i in range(len(keywords_array)):
                 for keyWord in keywords_array[i]:
-                    if keyWord == input_array_i:
-                        # добавляем в массив найденных, если совпали
-                        found.append(input_array_i)
+                    # if keyWord == input_array_i:
+                    #     # добавляем в массив найденных, если совпали
+                    #     found.append(input_array_i)
+                    #     count[i] += 1
+                    if re.match(keyWord, input_array_i):
                         count[i] += 1
-        return found
-
-    @staticmethod
-    def get_answers(seek, question_array, answer_array):
-        # seek['history'] = [{'doctor': '', 'request': '', 'dialogs': [{'question': '', 'answer': ''}]}]
-        # dialog = [{'question': question_array, 'answer': answer_array}]
-        # seek['dialogs'] += dialog
-        return 0
+        return count
 
     @staticmethod
     def filter_diseases(input_arr, diseases):

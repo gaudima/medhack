@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick 2.7
 import QtQuick.Controls 2.1
 import QtQuick.Controls.Material 2.1
 
@@ -33,7 +33,6 @@ ApplicationWindow {
             right: parent.right
             bottom: startButton.top
         }
-//        Component.onCompleted: dialog.nextAction()
         model: dialog.model
         delegate: Rectangle {
             width: parent.width
@@ -49,6 +48,9 @@ ApplicationWindow {
                 }
                 text: model.text
             }
+        }
+        Component.onCompleted: {
+            dialogView.positionViewAtEnd()
         }
     }
 

@@ -54,6 +54,7 @@ class DialogStrategy(QObject):
         QObject.__init__(self, parent=parent)
         self.doctor = None
         self.client = None
+        self.questions = Server.common_questions
 
     def init(self, client):
         self.client = client
@@ -64,12 +65,16 @@ class DialogStrategy(QObject):
         elif previousQuestionId == 0:
             keywords = Server.find_keywords(previousAnswer.lower().split(" "), Server.AllKeyWords)
             self.doctor = Server.Doctor.detect(keywords)
-            if self.doctor is None:
-                return -2, "Спасибо за ваше обращение."
-        if previousQuestionId < len(self.doctor.get_questions()):
-            return previousQuestionId + 1, self.doctor.get_questions()[previousQuestionId]
+            if self.doctor:
+                self.questions.extend(self.doctor.get_questions())
+        if previousQuestionId < len(self.questions):
+            return previousQuestionId + 1, self.questions[previousQuestionId]
         else:
-            return -2, "Спасибо за ваше обращение."
+            if self.doctor is None:
+                return -2, "Большое спасибо за ваше обращение!"
+            return -2, self.doctor.say()
+    def getQuestionsHistory(self):
+        return self.questions
 
 class Dialog(QObject):
     def __init__(self, parent=None):
@@ -83,8 +88,7 @@ class Dialog(QObject):
         def quitThread():
             print("quit thread")
             self.close()
-            self.answerRecognizerThread.quit()
-            self.answerRecognizerThread.wait()
+            self.answerRecognizerThread.terminate()
 
         parent.aboutToQuit.connect(quitThread)
         self.answerRecognizer.answerChanged.connect(lambda answer: self.handleAnswer(answer))
@@ -96,6 +100,7 @@ class Dialog(QObject):
         self._inProcess = False
         self._micLoudness = 0
         self.lastQuestionId = -1
+        self.patient = None
         self.lastAnswer = ""
         self.userAnswers = []
 
@@ -132,32 +137,30 @@ class Dialog(QObject):
     def startDialog(self):
         self._inProcess = True
         self.inProcessChanged.emit()
-        self.dialogStrategy.init(Server.Client("Василий Пупкин", 30))
+        self.patient = Server.Client("Василий Пупкин", 30)
+        self.dialogStrategy.init(self.patient)
         self.nextAction()
 
     @pyqtSlot()
     def nextAction(self):
         question = self.dialogStrategy.determineNextQuestion(self.lastQuestionId, self.lastAnswer)
         self.lastQuestionId = question[0]
-        self._model.addQuestion(question[1])
-        if question[0] == -2:
-            return
-        self.recognizeAnswer()
+        def finishCallback():
+            if question[0] == -2:
+                print(self.patient.create_history(self.userAnswers[0],
+                                                  self.dialogStrategy.doctor,
+                                                  self.dialogStrategy.getQuestionsHistory(),
+                                                  self.userAnswers[1:]))
+                return
+            self.recognizeAnswer()
+        self.questionPlayer.playQuestionAudio(question[1], lambda: self._model.addQuestion(question[1]), finishCallback)
+
 
     @pyqtSlot()
     def stopDialog(self):
         self._inProcess = False
         self.inProcessChanged.emit()
         self._model.clear()
-
-    def askQuestion(self, question):
-        self.questionPlayer.playQuestionAudio(question,
-                                              lambda: self._model.addQuestion(question),
-                                              lambda: self.recognizeAnswer())
-
-    def determineNextQuestion(self, answer):
-        self._model.modifyResponse(answer)
-        self.askQuestion("?")
 
     @pyqtSlot()
     def modifyAnswer(self, answer):

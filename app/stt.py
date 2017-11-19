@@ -26,7 +26,7 @@ class ResponseHandler(QObject):
             responses = self.queue.get()
             if self.shouldClear:
                 self.queue.queue.clear()
-                self.answerChanged.emit('')
+                # self.answerChanged.emit('')
                 self.shouldClear = False
                 continue
             for response in responses:
@@ -40,6 +40,7 @@ class ResponseHandler(QObject):
     def handleResponse(self, response):
         if not response.results:
             return
+        print(response)
         result = response.results[0]
         if not result.alternatives:
             return
@@ -114,17 +115,17 @@ class AnswerRecognizer(QObject):
             rms = audioop.rms(data, 2)
             print("rms:", rms)
             self.loudnessChanged.emit(rms/32767)
-            print("rms threshold:", int(32767 * 0.40))
+            print("rms threshold:", int(32767 * 0.35))
             print("data len:", len(data))
-            if rms < int(32767 * 0.40):
+            if rms < int(32767 * 0.35):
                 self.silenceLen += len(data)
             else:
                 self.silenceLen = 0
             print("silence len:", self.silenceLen)
-            if self.silenceLen >= self.rate * 2 * 4:
+            if self.silenceLen >= self.rate * 2 * 3:
                 if self.bestText == "":
                     self.startRecognition()
-                    return
+                    # return
                 else:
                     self.stopRecognition()
                     self.finalizeAnswer()
